@@ -418,6 +418,9 @@ class AppLocalizationsVi extends AppLocalizations {
   String get screensaverClockStyle => 'Kiểu đồng hồ bảo vệ màn hình';
 
   @override
+  String get screensaverShowWallpaper => 'Wallpapers on screensaver';
+
+  @override
   String get wifiUsagePeriod => 'Chu kỳ thống kê Wi-Fi';
 
   @override

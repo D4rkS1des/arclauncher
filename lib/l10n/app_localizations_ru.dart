@@ -417,6 +417,9 @@ class AppLocalizationsRu extends AppLocalizations {
   String get screensaverClockStyle => 'Стиль часов на заставке';
 
   @override
+  String get screensaverShowWallpaper => 'Обои на заставке';
+
+  @override
   String get wifiUsagePeriod => 'Период трафика Wi-Fi';
 
   @override

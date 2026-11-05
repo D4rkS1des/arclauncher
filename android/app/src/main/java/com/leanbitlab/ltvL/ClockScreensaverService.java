@@ -6,7 +6,10 @@ import android.animation.AnimatorSet;
 import android.animation.ObjectAnimator;
 import android.animation.PropertyValuesHolder;
 import android.content.SharedPreferences;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
 import android.graphics.Color;
+import android.graphics.drawable.GradientDrawable;
 import android.graphics.Typeface;
 import android.os.Handler;
 import android.os.Looper;
@@ -14,11 +17,15 @@ import android.service.dreams.DreamService;
 import android.util.DisplayMetrics;
 import android.util.TypedValue;
 import android.view.Gravity;
+import android.view.View;
 import android.view.animation.AccelerateDecelerateInterpolator;
+import android.view.animation.LinearInterpolator;
 import android.view.animation.OvershootInterpolator;
 import android.widget.FrameLayout;
+import android.widget.ImageView;
 import android.widget.TextView;
 
+import java.io.File;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -51,6 +58,16 @@ public class ClockScreensaverService extends DreamService {
     private static final int CHAR_ANIMATION_DURATION = 800; // ms per character
     private static final int CHAR_STAGGER_DELAY = 100; // ms between characters
 
+    // Wallpaper backdrop (tvOS-style): the launcher's own wallpapers drift slowly behind the clock
+    private static final long WALLPAPER_SLIDE_MS = 45_000;   // time each picture stays up
+    private static final long WALLPAPER_FADE_MS = 2_500;     // crossfade between pictures
+    private boolean wallpaperMode;
+    private FrameLayout backdrop;
+    private ImageView currentImage;
+    private final List<File> wallpapers = new ArrayList<>();
+    private int wallpaperIndex = -1;
+    private Runnable nextWallpaperRunnable;
+
     @Override
     public void onAttachedToWindow() {
         super.onAttachedToWindow();
@@ -58,13 +75,28 @@ public class ClockScreensaverService extends DreamService {
         setInteractive(false);
         setFullscreen(true);
 
-        // Create container
-        container = new FrameLayout(this);
-        container.setBackgroundColor(Color.BLACK);
-        setContentView(container);
-
         handler = new Handler(Looper.getMainLooper());
         random = new Random();
+
+        SharedPreferences prefs = getSharedPreferences("FlutterSharedPreferences", MODE_PRIVATE);
+        wallpaperMode = prefs.getBoolean("flutter.screensaver_show_wallpaper", true) && collectWallpapers();
+
+        // Layers: black root → wallpaper backdrop + scrim → clock characters. The clock layer is
+        // rebuilt as the time changes, so the backdrop lives beside it, not inside it.
+        FrameLayout root = new FrameLayout(this);
+        root.setBackgroundColor(Color.BLACK);
+        container = new FrameLayout(this);
+        container.setBackgroundColor(Color.TRANSPARENT);
+        if (wallpaperMode) {
+            backdrop = new FrameLayout(this);
+            root.addView(backdrop, matchParent());
+            View scrim = new View(this);
+            scrim.setBackground(new GradientDrawable(GradientDrawable.Orientation.TOP_BOTTOM,
+                    new int[] { 0x33000000, 0x26000000, 0x73000000 }));
+            root.addView(scrim, matchParent());
+        }
+        root.addView(container, matchParent());
+        setContentView(root);
 
         // Get screen dimensions
         DisplayMetrics metrics = getResources().getDisplayMetrics();
@@ -96,6 +128,130 @@ public class ClockScreensaverService extends DreamService {
         // Start handlers with initial delay
         handler.postDelayed(moveClockRunnable, 30000);
         handler.post(updateTimeRunnable);
+
+        if (wallpaperMode) {
+            nextWallpaperRunnable = () -> {
+                showNextWallpaper();
+                handler.postDelayed(nextWallpaperRunnable, WALLPAPER_SLIDE_MS);
+            };
+            handler.post(nextWallpaperRunnable);
+        }
+    }
+
+    private static FrameLayout.LayoutParams matchParent() {
+        return new FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT,
+                FrameLayout.LayoutParams.MATCH_PARENT);
+    }
+
+    /**
+     * Gathers the pictures the launcher already has on disk: the Reddit / Unsplash slideshow
+     * caches (newest first) and the static wallpapers (the one matching the time of day first).
+     * Path matches path_provider's getApplicationDocumentsDirectory() on Android.
+     */
+    private boolean collectWallpapers() {
+        wallpapers.clear();
+        File docs = getDir("flutter", MODE_PRIVATE);
+        for (String dirName : new String[] { "reddit_slideshow", "slideshow" }) {
+            File[] files = new File(docs, dirName).listFiles((d, name) -> name.endsWith(".jpg"));
+            if (files == null) continue;
+            List<File> list = new ArrayList<>();
+            Collections.addAll(list, files);
+            Collections.sort(list, (a, b) -> Long.compare(b.lastModified(), a.lastModified()));
+            wallpapers.addAll(list);
+        }
+        int hour = java.util.Calendar.getInstance().get(java.util.Calendar.HOUR_OF_DAY);
+        boolean day = hour >= 6 && hour < 18;
+        for (String name : day
+                ? new String[] { "wallpaper_day", "wallpaper", "wallpaper_night" }
+                : new String[] { "wallpaper_night", "wallpaper", "wallpaper_day" }) {
+            File f = new File(docs, name);
+            if (f.isFile() && f.length() > 0) wallpapers.add(f);
+        }
+        return !wallpapers.isEmpty();
+    }
+
+    /** Decodes a picture at roughly screen size, so a 4K wallpaper does not exhaust memory. */
+    private Bitmap decodeForScreen(File file) {
+        BitmapFactory.Options bounds = new BitmapFactory.Options();
+        bounds.inJustDecodeBounds = true;
+        BitmapFactory.decodeFile(file.getAbsolutePath(), bounds);
+        if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null;
+        int sample = 1;
+        while (bounds.outWidth / (sample * 2) >= screenWidth * 1.15
+                && bounds.outHeight / (sample * 2) >= screenHeight * 1.15) {
+            sample *= 2;
+        }
+        BitmapFactory.Options opts = new BitmapFactory.Options();
+        opts.inSampleSize = sample;
+        opts.inPreferredConfig = Bitmap.Config.RGB_565;
+        return BitmapFactory.decodeFile(file.getAbsolutePath(), opts);
+    }
+
+    /**
+     * Crossfades to the next picture and starts its slow "Ken Burns" drift: a gentle zoom with a
+     * pan in a random direction, like the Apple TV aerial screensavers.
+     */
+    private void showNextWallpaper() {
+        if (backdrop == null) return;
+        // Pick up pictures the launcher downloaded while we were running
+        if (wallpaperIndex >= wallpapers.size() - 1) collectWallpapers();
+        if (wallpapers.isEmpty()) return;
+        wallpaperIndex = (wallpaperIndex + 1) % wallpapers.size();
+
+        Bitmap bitmap = null;
+        for (int tries = 0; tries < wallpapers.size() && bitmap == null; tries++) {
+            try {
+                bitmap = decodeForScreen(wallpapers.get(wallpaperIndex));
+            } catch (Throwable ignored) {
+                bitmap = null;
+            }
+            if (bitmap == null) wallpaperIndex = (wallpaperIndex + 1) % wallpapers.size();
+        }
+        if (bitmap == null) return;
+        // Same picture again (only one available): keep it and just restart the drift
+        if (wallpapers.size() == 1 && currentImage != null) {
+            startDrift(currentImage);
+            bitmap.recycle();
+            return;
+        }
+
+        final ImageView previous = currentImage;
+        ImageView next = new ImageView(this);
+        next.setScaleType(ImageView.ScaleType.CENTER_CROP);
+        next.setImageBitmap(bitmap);
+        next.setAlpha(0f);
+        backdrop.addView(next, matchParent());
+        currentImage = next;
+        startDrift(next);
+
+        next.animate().alpha(1f).setDuration(previous == null ? 1_200 : WALLPAPER_FADE_MS)
+                .withEndAction(() -> {
+                    if (previous != null) {
+                        backdrop.removeView(previous);
+                        previous.setImageDrawable(null);
+                    }
+                })
+                .start();
+    }
+
+    private void startDrift(ImageView view) {
+        float zoomFrom = 1.04f;
+        float zoomTo = 1.16f;
+        float panX = (random.nextBoolean() ? 1 : -1) * screenWidth * 0.035f;
+        float panY = (random.nextBoolean() ? 1 : -1) * screenHeight * 0.025f;
+        view.setScaleX(zoomFrom);
+        view.setScaleY(zoomFrom);
+        view.setTranslationX(-panX);
+        view.setTranslationY(-panY);
+        view.animate().cancel();
+        ObjectAnimator drift = ObjectAnimator.ofPropertyValuesHolder(view,
+                PropertyValuesHolder.ofFloat("scaleX", zoomFrom, zoomTo),
+                PropertyValuesHolder.ofFloat("scaleY", zoomFrom, zoomTo),
+                PropertyValuesHolder.ofFloat("translationX", -panX, panX),
+                PropertyValuesHolder.ofFloat("translationY", -panY, panY));
+        drift.setDuration(WALLPAPER_SLIDE_MS + WALLPAPER_FADE_MS);
+        drift.setInterpolator(new LinearInterpolator());
+        drift.start();
     }
 
     private void createCharacterViews() {
@@ -197,7 +353,12 @@ public class ClockScreensaverService extends DreamService {
         }
 
         tv.setGravity(Gravity.CENTER);
-        tv.setShadowLayer(15, 0, 0, 0x60FFFFFF);
+        if (wallpaperMode) {
+            // Over a photo: a soft dark shadow keeps the clock readable on bright skies
+            tv.setShadowLayer(18, 0, 3, 0xA0000000);
+        } else {
+            tv.setShadowLayer(15, 0, 0, 0x60FFFFFF);
+        }
         tv.setLayoutParams(new FrameLayout.LayoutParams(
                 FrameLayout.LayoutParams.WRAP_CONTENT,
                 FrameLayout.LayoutParams.WRAP_CONTENT));

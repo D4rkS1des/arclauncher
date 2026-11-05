@@ -199,6 +199,7 @@
     "brightnessScheduler": "Brightness Scheduler",
     "screensaverSettings": "Screensaver Settings",
     "screensaverClockStyle": "Screensaver Clock Style",
+    "screensaverShowWallpaper": "Wallpapers on screensaver",
     "wifiUsagePeriod": "WiFi Usage Period",
     "showAppNamesBelowIcons": "Show App Names Below Icons",
     "wifiUsage": "WiFi Usage",

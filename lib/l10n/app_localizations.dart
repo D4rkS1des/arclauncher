@@ -868,6 +868,12 @@ abstract class AppLocalizations {
   /// **'Screensaver Clock Style'**
   String get screensaverClockStyle;
 
+  /// No description provided for @screensaverShowWallpaper.
+  ///
+  /// In en, this message translates to:
+  /// **'Wallpapers on screensaver'**
+  String get screensaverShowWallpaper;
+
   /// No description provided for @wifiUsagePeriod.
   ///
   /// In en, this message translates to:

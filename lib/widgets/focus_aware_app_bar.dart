@@ -2,6 +2,7 @@ import 'package:flauncher/widgets/settings/settings_panel.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../providers/apps_service.dart';
 import '../providers/launcher_state.dart';
 import '../providers/network_service.dart';
 import '../providers/settings_service.dart';
@@ -104,6 +105,20 @@ class FocusAwareAppBarState extends State<FocusAwareAppBar>
                 semanticLabel: 'Settings',
                 child: const Icon(
                   Icons.settings_outlined,
+                  size: 20,
+                  color: Colors.white,
+                  shadows: [
+                    Shadow(color: Colors.black54, blurRadius: 8, offset: Offset(0, 2)),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              // Input source picker (HDMI 1-3, AV, antenna): same panel as the remote's Input key
+              AppBarFocusRing(
+                onPressed: () => context.read<AppsService>().openInputs(),
+                semanticLabel: 'Input source',
+                child: const Icon(
+                  Icons.input_rounded,
                   size: 20,
                   color: Colors.white,
                   shadows: [

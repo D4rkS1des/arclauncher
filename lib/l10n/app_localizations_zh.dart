@@ -411,6 +411,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get screensaverClockStyle => '屏保时钟样式';
 
   @override
+  String get screensaverShowWallpaper => 'Wallpapers on screensaver';
+
+  @override
   String get wifiUsagePeriod => 'WiFi 使用周期';
 
   @override

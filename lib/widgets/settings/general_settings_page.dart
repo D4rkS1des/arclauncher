@@ -19,6 +19,9 @@
 import 'package:flauncher/widgets/settings/settings_theme.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:provider/provider.dart';
+import 'package:flauncher/providers/settings_service.dart';
+import 'package:flauncher/widgets/rounded_switch_list_tile.dart';
 import 'package:flauncher/l10n/app_localizations.dart';
 import 'focusable_settings_tile.dart';
 import 'brightness_settings_page.dart';
@@ -62,6 +65,14 @@ class GeneralSettingsPage extends StatelessWidget {
                   leading: const Icon(Icons.watch_later_outlined),
                   title: Text(localizations.screensaverClockStyle, style: Theme.of(context).textTheme.bodyMedium),
                   onPressed: () => Navigator.of(context).pushNamed(ScreensaverClockStylePage.routeName),
+                ),
+                Consumer<SettingsService>(
+                  builder: (context, settings, _) => RoundedSwitchListTile(
+                    value: settings.screensaverShowWallpaper,
+                    onChanged: settings.setScreensaverShowWallpaper,
+                    title: Text(localizations.screensaverShowWallpaper, style: Theme.of(context).textTheme.bodyMedium),
+                    secondary: const Icon(Icons.wallpaper),
+                  ),
                 ),
                 FocusableSettingsTile(
                   showChevron: true,

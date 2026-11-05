@@ -42,6 +42,8 @@ const _showWifiWidgetInStatusBar = "show_wifi_widget_in_status_bar";
 const String _showNetworkIndicatorInStatusBar = "show_network_indicator_in_status_bar";
 const String _accentColor = "accent_color";
 const String _screensaverClockStyle = "screensaver_clock_style";
+// Read natively by ClockScreensaverService as "flutter.screensaver_show_wallpaper"
+const String _screensaverShowWallpaper = "screensaver_show_wallpaper";
 const String _dockBackdropFilterDisabled = "dock_backdrop_filter_disabled";
 const String _backgroundBlurDisabled = "background_blur_disabled";
 const String _showWatchNextSection = "show_watch_next_section";
@@ -138,6 +140,11 @@ class SettingsService extends ChangeNotifier {
   String get accentColorHex => _sharedPreferences.getString(_accentColor) ?? ACCENT_COLOR_WHITE;
 
   String get screensaverClockStyle => _sharedPreferences.getString(_screensaverClockStyle) ?? "minimal";
+
+  /// Screensaver shows the launcher wallpapers (slow drift + crossfade) behind the clock.
+  bool get screensaverShowWallpaper => _sharedPreferences.getBool(_screensaverShowWallpaper) ?? true;
+
+  Future<void> setScreensaverShowWallpaper(bool value) => set(_screensaverShowWallpaper, value);
 
   bool get dockBackdropFilterDisabled => _sharedPreferences.getBool(_dockBackdropFilterDisabled) ?? false;
 

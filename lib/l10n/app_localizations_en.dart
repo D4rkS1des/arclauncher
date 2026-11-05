@@ -416,6 +416,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get screensaverClockStyle => 'Screensaver Clock Style';
 
   @override
+  String get screensaverShowWallpaper => 'Wallpapers on screensaver';
+
+  @override
   String get wifiUsagePeriod => 'WiFi Usage Period';
 
   @override
