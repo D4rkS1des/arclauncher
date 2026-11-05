@@ -29,6 +29,7 @@ import 'package:flauncher/l10n/app_localizations.dart';
 
 import '../models/app.dart';
 import '../models/category.dart';
+import 'package:flauncher/widgets/category_display_name.dart';
 
 class ApplicationInfoPanel extends StatefulWidget
 {
@@ -193,7 +194,7 @@ class _ApplicationInfoPanelState extends State<ApplicationInfoPanel>
                            Container(width: 8),
                            Flexible(
                              child: Text(
-                               localizations.removeFrom(widget.category!.name),
+                               localizations.removeFrom(categoryDisplayName(context, widget.category!.name)),
                                style: Theme.of(context).textTheme.bodyMedium,
                                maxLines: 2,
                                overflow: TextOverflow.ellipsis,

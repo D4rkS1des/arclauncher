@@ -5,6 +5,7 @@
     "alphabetical": "Alphabetical",
     "appCardHighlightAnimation": "App card highlight animation",
     "showFocusBorders": "Show focus borders",
+    "tvosStyle": "Apple TV style",
     "focusBorderThickness": "Focus border thickness",
     "focusBorderThin": "Subtle (1.0 dp)",
     "focusBorderDefault": "Default (1.5 dp)",
@@ -80,7 +81,9 @@
     "removeFrom": "Remove from {name}",
     "@removeFrom": {
         "placeholders": {
-            "name": { "type": "String" }
+            "name": {
+                "type": "String"
+            }
         }
     },
     "renameCategory": "Rename category",
@@ -327,31 +330,31 @@
     "brightnessSlotEvening": "6 PM - 10 PM",
     "brightnessSlotNight": "10 PM - 6 AM",
     "@customBannerSetFailed": {
-      "placeholders": {
-        "error": {
-          "type": "String"
+        "placeholders": {
+            "error": {
+                "type": "String"
+            }
         }
-      }
     },
     "@customBannerClearFailed": {
-      "placeholders": {
-        "error": {
-          "type": "String"
+        "placeholders": {
+            "error": {
+                "type": "String"
+            }
         }
-      }
     },
     "@mediaItemCount": {
-      "placeholders": {
-        "count": {
-          "type": "int"
+        "placeholders": {
+            "count": {
+                "type": "int"
+            }
         }
-      }
     },
     "@currentBrightnessSlot": {
-      "placeholders": {
-        "slot": {
-          "type": "String"
+        "placeholders": {
+            "slot": {
+                "type": "String"
+            }
         }
-      }
     }
 }

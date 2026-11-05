@@ -57,3 +57,8 @@ flutter:
   assets:
     - assets/
     - lib/l10n/
+  fonts:
+    # Inter (SIL OFL 1.1, assets/fonts/Inter-OFL.txt): open typeface close in feel to the tvOS UI font
+    - family: Inter
+      fonts:
+        - asset: assets/fonts/InterVariable.ttf

@@ -1,4 +1,6 @@
+import 'package:flauncher/providers/settings_service.dart';
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 
 /// Shared visual language for the settings side panel.
 ///
@@ -34,6 +36,9 @@ abstract final class SettingsStyle {
 
   /// Scale applied to the focused row (1.0 means no lift).
   static const double focusScale = 1.018;
+
+  /// tvOS rows lift a little more, like menu items on Apple TV.
+  static const double tvosFocusScale = 1.035;
 
   static const double panelWidth = 380;
   static const double panelRadius = 32;
@@ -201,10 +206,17 @@ class _SettingsFocusCardState extends State<SettingsFocusCard>
   @override
   Widget build(BuildContext context) {
     final accentColor = Theme.of(context).colorScheme.primary;
-    final content = Padding(
+    final tvos = context.select<SettingsService, bool>((s) => s.tvosStyleEnabled);
+    Widget content = Padding(
       padding: widget.padding,
       child: widget.builder(context, _highlighted),
     );
+    // tvOS menus: the focused row turns into a bright white pill and its contents go dark and
+    // monochrome. The row widgets set their own (white) text colours, so recolour the rendered
+    // row instead of every caller: luminance is inverted into greys, alpha is kept.
+    if (tvos && _highlighted) {
+      content = ColorFiltered(colorFilter: _tvosFocusedContentFilter, child: content);
+    }
 
     return Padding(
       padding: widget.margin,
@@ -250,14 +262,17 @@ class _SettingsFocusCardState extends State<SettingsFocusCard>
                   animation: _highlight,
                   child: content,
                   builder: (context, child) => Transform.scale(
-                    scale:
-                        1 + (SettingsStyle.focusScale - 1) * _highlight.value,
+                    scale: 1 +
+                        ((tvos ? SettingsStyle.tvosFocusScale : SettingsStyle.focusScale) - 1) *
+                            _highlight.value,
                     child: CustomPaint(
-                      painter: SettingsSurfacePainter(
-                        progress: _highlight.value,
-                        accentColor: accentColor,
-                        radius: widget.radius,
-                      ),
+                      painter: tvos
+                          ? TvosRowPainter(progress: _highlight.value, radius: widget.radius)
+                          : SettingsSurfacePainter(
+                              progress: _highlight.value,
+                              accentColor: accentColor,
+                              radius: widget.radius,
+                            ),
                       child: child,
                     ),
                   ),
@@ -351,4 +366,45 @@ class SettingsSurfacePainter extends CustomPainter {
       oldDelegate.progress != progress ||
       oldDelegate.accentColor != accentColor ||
       oldDelegate.radius != radius;
+}
+
+/// Dark, monochrome rendering for the contents of a focused tvOS-style row: grey levels are
+/// inverted (white text becomes near-black), colours collapse to grey, alpha is untouched.
+const ColorFilter _tvosFocusedContentFilter = ColorFilter.matrix(<double>[
+  -0.2126, -0.7152, -0.0722, 0, 235, //
+  -0.2126, -0.7152, -0.0722, 0, 235, //
+  -0.2126, -0.7152, -0.0722, 0, 235, //
+  0, 0, 0, 1, 0, //
+]);
+
+/// tvOS-style row surface: invisible at rest, a white rounded pill with a soft drop shadow
+/// when focused.
+class TvosRowPainter extends CustomPainter {
+  final double progress;
+  final double radius;
+
+  const TvosRowPainter({required this.progress, this.radius = SettingsStyle.cardRadius});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (size.isEmpty) return;
+    final t = progress.clamp(0.0, 1.0);
+    final rrect = RRect.fromRectAndRadius(Offset.zero & size, Radius.circular(radius));
+
+    // Faint resting fill so rows still read as rows on the glass
+    canvas.drawRRect(rrect, Paint()..color = Colors.white.withValues(alpha: 0.05 * (1 - t)));
+    if (t <= 0.001) return;
+
+    canvas.drawRRect(
+      rrect.shift(Offset(0, 6 * t)),
+      Paint()
+        ..color = Colors.black.withValues(alpha: 0.35 * t)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 10),
+    );
+    canvas.drawRRect(rrect, Paint()..color = Color.lerp(const Color(0x00FFFFFF), const Color(0xF7FFFFFF), t)!);
+  }
+
+  @override
+  bool shouldRepaint(covariant TvosRowPainter oldDelegate) =>
+      oldDelegate.progress != progress || oldDelegate.radius != radius;
 }

@@ -26,6 +26,12 @@ class AppearancePanelPage extends StatelessWidget {
             children: [
               RoundedSwitchListTile(
                 autofocus: true,
+                value: settingsService.tvosStyleEnabled,
+                onChanged: settingsService.setTvosStyleEnabled,
+                title: Text(localizations.tvosStyle, style: Theme.of(context).textTheme.bodyMedium),
+                secondary: const Icon(Icons.tv),
+              ),
+              RoundedSwitchListTile(
                 value: !settingsService.dockBackdropFilterDisabled,
                 onChanged: (value) => settingsService.setDockBackdropFilterDisabled(!value),
                 title: Text(localizations.dockBlur, style: Theme.of(context).textTheme.bodyMedium),

@@ -54,6 +54,7 @@ const List<int> WATCH_NEXT_MAX_ITEMS_OPTIONS = [0, 5, 10, 15, 20, 25, 30, 50];
 const String _dockDarkBackground = "dock_dark_background";
 const String _dockShadowEnabled = "dock_shadow_enabled";
 const String _showFocusBorders = "show_focus_borders";
+const String _tvosStyleEnabled = "tvos_style_enabled";
 const String _focusBorderThickness = "focus_border_thickness";
 
 // Focus border thickness options (in dp)
@@ -107,7 +108,14 @@ class SettingsService extends ChangeNotifier {
 
   bool get showCategoryTitles => _sharedPreferences.getBool(_showCategoryTitles) ?? false;
 
-  bool get showAppNamesBelowIcons => _sharedPreferences.getBool(_showAppNamesBelowIcons) ?? false;
+  // Defaults below lean towards the tvOS-style home screen: name under the focused tile only,
+  // no focus outline, and Watch Next shown as a full-screen "top shelf".
+  bool get showAppNamesBelowIcons => _sharedPreferences.getBool(_showAppNamesBelowIcons) ?? true;
+
+  /// tvOS-style tiles (swing-in tilt, glass sheen) and a tray-less dock.
+  bool get tvosStyleEnabled => _sharedPreferences.getBool(_tvosStyleEnabled) ?? true;
+
+  Future<void> setTvosStyleEnabled(bool value) async => set(_tvosStyleEnabled, value);
 
   bool get showDateInStatusBar => _sharedPreferences.getBool(_showDateInStatusBar) ?? false;
 
@@ -135,9 +143,9 @@ class SettingsService extends ChangeNotifier {
 
   bool get backgroundBlurDisabled => _sharedPreferences.getBool(_backgroundBlurDisabled) ?? false;
 
-  bool get showWatchNextSection => _sharedPreferences.getBool(_showWatchNextSection) ?? false;
+  bool get showWatchNextSection => _sharedPreferences.getBool(_showWatchNextSection) ?? true;
 
-  bool get watchNextBigPictureMode => _sharedPreferences.getBool(_watchNextBigPictureMode) ?? false;
+  bool get watchNextBigPictureMode => _sharedPreferences.getBool(_watchNextBigPictureMode) ?? true;
 
   bool get watchNextHideProgramsWithoutImages =>
       _sharedPreferences.getBool(_watchNextHideProgramsWithoutImages) ?? false;
@@ -148,7 +156,7 @@ class SettingsService extends ChangeNotifier {
 
   bool get dockShadowEnabled => _sharedPreferences.getBool(_dockShadowEnabled) ?? false;
 
-  bool get showFocusBorders => _sharedPreferences.getBool(_showFocusBorders) ?? true;
+  bool get showFocusBorders => _sharedPreferences.getBool(_showFocusBorders) ?? false;
 
   double get focusBorderThickness => _sharedPreferences.getDouble(_focusBorderThickness) ?? FOCUS_BORDER_DEFAULT;
 

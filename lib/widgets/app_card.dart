@@ -38,10 +38,13 @@ import '../models/category.dart';
 const _validationKeys = [LogicalKeyboardKey.select, LogicalKeyboardKey.enter, LogicalKeyboardKey.gameButtonA];
 
 const kAppCardAspectRatio = 16 / 9;
-const kAppCardHorizontalPadding = 12.0;
-const kAppCardVerticalPadding = 9.0;
-const kLauncherSectionHorizontalPadding = 24.0;
-const kAppNameLabelHeight = 24.0;
+// Roomier gutters than stock FLauncher: the tvOS-style focus lift scales a card by
+// _focusedScale, and it needs that much air to grow into without covering its neighbours.
+const kAppCardHorizontalPadding = 16.0;
+const kAppCardVerticalPadding = 12.0;
+const kLauncherSectionHorizontalPadding = 32.0;
+const kAppNameLabelHeight = 30.0;
+const double kAppCardRadius = 14.0;
 
 /// Row extent for a grid/dock line given the content width between section paddings.
 double appCardRowExtentFromContentWidth(double contentWidth, {int columnCount = Category.ColumnsCount}) {
@@ -87,7 +90,11 @@ class AppCard extends StatefulWidget {
   State<AppCard> createState() => _AppCardState();
 }
 
-class _AppCardState extends State<AppCard> with SingleTickerProviderStateMixin {
+class _AppCardState extends State<AppCard> with TickerProviderStateMixin {
+  /// Direction of the last D-pad move made from a card, so the card that receives focus can
+  /// swing in from that side (the tvOS "parallax" nudge). Shared by all cards on purpose.
+  static AxisDirection? _lastNavDirection;
+
   bool _moving = false;
   bool _clicked = false;
   bool _isFocused = false;
@@ -106,12 +113,25 @@ class _AppCardState extends State<AppCard> with SingleTickerProviderStateMixin {
   late final AnimationController _animation;
 
   late final CurvedAnimation _curvedAnimation;
-  static const double _focusedScale = 1.07;
-  static const Duration _focusAnimationDuration = Duration(milliseconds: 180);
+  static const double _focusedScale = 1.13;
+  static const Duration _focusAnimationDuration = Duration(milliseconds: 220);
+
+  /// Swing-in tilt played when focus arrives (0 → 1), and the side it swings from.
+  late final AnimationController _tilt;
+  Offset _tiltFrom = Offset.zero;
+
+  /// One-shot specular sweep across the card when it gains focus.
+  late final AnimationController _sheen;
+
+  /// Slow, endless 'breathing' of the focused tile's light and shadow, so it feels alive.
+  late final AnimationController _breath;
 
   @override
   void initState() {
     super.initState();
+    _tilt = AnimationController(vsync: this, duration: const Duration(milliseconds: 520), value: 1);
+    _sheen = AnimationController(vsync: this, duration: const Duration(milliseconds: 900), value: 1);
+    _breath = AnimationController(vsync: this, duration: const Duration(milliseconds: 2600));
     _animation = AnimationController(vsync: this, duration: const Duration(milliseconds: 1200));
     _curvedAnimation = CurvedAnimation(parent: _animation, curve: Curves.easeInOut);
     _focusNode = FocusNode();
@@ -171,6 +191,9 @@ class _AppCardState extends State<AppCard> with SingleTickerProviderStateMixin {
     FocusManager.instance.removeHighlightModeListener(_focusHighlightModeChanged);
     _curvedAnimation.dispose();
     _animation.dispose();
+    _tilt.dispose();
+    _sheen.dispose();
+    _breath.dispose();
     _focusNode.dispose();
 
     super.dispose();
@@ -179,6 +202,7 @@ class _AppCardState extends State<AppCard> with SingleTickerProviderStateMixin {
   @override
   Widget build(BuildContext context) {
     final bool showAppNames = context.select<SettingsService, bool>((s) => s.showAppNamesBelowIcons);
+    final bool tvos = context.select<SettingsService, bool>((s) => s.tvosStyleEnabled);
     final (bool animationEnabled, String accentColorHex, bool showFocusBorders, double borderThickness) = context.select<SettingsService, (bool, String, bool, double)>(
       (s) => (s.appHighlightAnimationEnabled, s.accentColorHex, s.showFocusBorders, s.focusBorderThickness),
     );
@@ -199,11 +223,12 @@ class _AppCardState extends State<AppCard> with SingleTickerProviderStateMixin {
       onPressed: _onPressed,
       onLongPress: _onLongPress,
       child: AnimatedScale(
-        scale: _clicked ? 0.9 : 1.0,
-        duration: const Duration(milliseconds: 150),
-        curve: Curves.easeOutCubic,
+        // tvOS press: a short, firm push-in, then the tile springs back
+        scale: _clicked ? 0.94 : 1.0,
+        duration: Duration(milliseconds: _clicked ? 110 : 320),
+        curve: _clicked ? Curves.easeOutCubic : Curves.easeOutBack,
         child: AnimatedOpacity(
-          opacity: _clicked ? 0.85 : 1.0,
+          opacity: 1.0,
           duration: const Duration(milliseconds: 150),
           child: Column(
             mainAxisSize: MainAxisSize.min,
@@ -211,7 +236,10 @@ class _AppCardState extends State<AppCard> with SingleTickerProviderStateMixin {
               Flexible(
                 child: _wrapAspectRatio(
                   RepaintBoundary(
-                    child: AnimatedScale(
+                    child: _TvosTilt(
+                      animation: _tilt,
+                      from: tvos ? _tiltFrom : Offset.zero,
+                      child: AnimatedScale(
                       scale: !_moving && shouldHighlight ? _focusedScale : 1.0,
                       duration: _focusAnimationDuration,
                       alignment: Alignment.center,
@@ -219,11 +247,52 @@ class _AppCardState extends State<AppCard> with SingleTickerProviderStateMixin {
                       child: Stack(
                         fit: StackFit.expand,
                         children: [
+                          // Lift: a soft, wide shadow that drops further when focused
+                          AnimatedContainer(
+                            duration: _focusAnimationDuration,
+                            curve: Curves.easeOutCubic,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(kAppCardRadius),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: shouldHighlight ? 0.55 : 0.30),
+                                  blurRadius: shouldHighlight ? 30 : 10,
+                                  offset: Offset(0, shouldHighlight ? 18 : 4),
+                                ),
+                              ],
+                            ),
+                          ),
+                          // A second, wider shadow that slowly breathes while the tile is focused
+                          if (tvos)
+                            IgnorePointer(
+                              child: AnimatedOpacity(
+                                duration: _focusAnimationDuration,
+                                opacity: shouldHighlight && !_moving ? 1.0 : 0.0,
+                                child: AnimatedBuilder(
+                                  animation: _breath,
+                                  builder: (context, _) {
+                                    final b = Curves.easeInOut.transform(_breath.value);
+                                    return DecoratedBox(
+                                      decoration: BoxDecoration(
+                                        borderRadius: BorderRadius.circular(kAppCardRadius),
+                                        boxShadow: [
+                                          BoxShadow(
+                                            color: Colors.black.withValues(alpha: 0.16 + 0.10 * b),
+                                            blurRadius: 34 + 14 * b,
+                                            offset: Offset(0, 22 + 6 * b),
+                                          ),
+                                        ],
+                                      ),
+                                    );
+                                  },
+                                ),
+                              ),
+                            ),
                           Material(
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(kAppCardRadius),
                             clipBehavior: Clip.antiAlias,
-                            elevation: shouldHighlight ? 7 : 4,
-                            shadowColor: Colors.black,
+                            elevation: 0,
+                            color: const Color(0xFF2C2C2E),
                             child: Stack(
                               fit: StackFit.expand,
                               children: [
@@ -239,14 +308,31 @@ class _AppCardState extends State<AppCard> with SingleTickerProviderStateMixin {
                                   },
                                 ),
                                 if (_moving) ..._arrows(),
+                                // Unfocused cards sit slightly back, so the focused one reads as lit
                                 IgnorePointer(
                                   child: AnimatedOpacity(
                                     duration: _focusAnimationDuration,
                                     curve: Curves.easeInOut,
                                     opacity: shouldHighlight ? 0.0 : 1.0,
-                                    child: const ColoredBox(color: Color(0x1A000000)),
+                                    child: const ColoredBox(color: Color(0x26000000)),
                                   ),
                                 ),
+                                // Glass: a soft top-light plus a one-off sweep when focus lands
+                                if (tvos && shouldHighlight && !_moving)
+                                  IgnorePointer(
+                                    child: RepaintBoundary(
+                                      child: AnimatedBuilder(
+                                        animation: Listenable.merge([_sheen, _breath]),
+                                        builder: (context, _) => CustomPaint(
+                                          painter: _TvosGlarePainter(
+                                            progress: _sheen.value,
+                                            breath: Curves.easeInOut.transform(_breath.value),
+                                          ),
+                                          child: const SizedBox.expand(),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
                               ],
                             ),
                           ),
@@ -280,11 +366,20 @@ class _AppCardState extends State<AppCard> with SingleTickerProviderStateMixin {
                         ],
                       ),
                     ),
+                    ),
                 ),
                 ),
               ),
+              // tvOS shows the name only under the focused tile, below its lifted shadow
               if (showAppNames)
-                Padding(padding: const EdgeInsets.only(top: 8.0), child: _AppNameLabel(name: widget.application.name)),
+                Padding(
+                  padding: const EdgeInsets.only(top: 12.0),
+                  child: AnimatedOpacity(
+                    duration: _focusAnimationDuration,
+                    opacity: !tvos || (shouldHighlight && !_moving) ? 1.0 : 0.0,
+                    child: _AppNameLabel(name: widget.application.name),
+                  ),
+                ),
             ],
           ),
         ),
@@ -401,7 +496,32 @@ class _AppCardState extends State<AppCard> with SingleTickerProviderStateMixin {
     if (_isFocused != focused) {
       setState(() {
         _isFocused = focused;
+        if (focused) {
+          // Swing in from the side the user came from, settling with a small overshoot
+          switch (_lastNavDirection) {
+            case AxisDirection.right:
+              _tiltFrom = const Offset(-1, 0);
+            case AxisDirection.left:
+              _tiltFrom = const Offset(1, 0);
+            case AxisDirection.down:
+              _tiltFrom = const Offset(0, -1);
+            case AxisDirection.up:
+              _tiltFrom = const Offset(0, 1);
+            case null:
+              _tiltFrom = Offset.zero;
+          }
+        }
       });
+      if (focused) {
+        _tilt.forward(from: 0);
+        _sheen.forward(from: 0);
+        if (context.read<SettingsService>().tvosStyleEnabled) {
+          _breath.repeat(reverse: true);
+        }
+      } else {
+        _breath.stop();
+        _breath.value = 0;
+      }
     }
     _updateHighlightAnimation();
 
@@ -575,7 +695,20 @@ class _AppCardState extends State<AppCard> with SingleTickerProviderStateMixin {
       }
 
       return KeyEventResult.handled;
-    } else if (_validationKeys.contains(key)) {
+    }
+
+    switch (key) {
+      case LogicalKeyboardKey.arrowLeft:
+        _lastNavDirection = AxisDirection.left;
+      case LogicalKeyboardKey.arrowRight:
+        _lastNavDirection = AxisDirection.right;
+      case LogicalKeyboardKey.arrowUp:
+        _lastNavDirection = AxisDirection.up;
+      case LogicalKeyboardKey.arrowDown:
+        _lastNavDirection = AxisDirection.down;
+    }
+
+    if (_validationKeys.contains(key)) {
       if (!_clicked) {
         setState(() => _clicked = true);
         Future.delayed(const Duration(milliseconds: 150), () {
@@ -625,12 +758,98 @@ class _AppNameLabel extends StatelessWidget {
   Widget build(BuildContext context) {
     return Text(
       name,
-      style: Theme.of(context).textTheme.bodySmall?.copyWith(fontSize: 12),
+      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+        fontSize: 15,
+        fontWeight: FontWeight.w500,
+        color: Colors.white.withValues(alpha: 0.92),
+        shadows: const [Shadow(color: Colors.black54, blurRadius: 6)],
+      ),
       overflow: TextOverflow.ellipsis,
       maxLines: 1,
       textAlign: TextAlign.center,
     );
   }
+}
+
+/// Small 3D swing applied when a card gains focus: it starts tilted towards the side focus came
+/// from and settles flat with a slight overshoot, which is what makes tvOS tiles feel physical.
+class _TvosTilt extends StatelessWidget {
+  final Animation<double> animation;
+  final Offset from;
+  final Widget child;
+
+  const _TvosTilt({required this.animation, required this.from, required this.child});
+
+  static const double _maxAngle = 0.14; // radians, ~8 degrees
+
+  @override
+  Widget build(BuildContext context) {
+    if (from == Offset.zero) return child;
+    return AnimatedBuilder(
+      animation: animation,
+      child: child,
+      builder: (context, child) {
+        final t = animation.value;
+        if (t >= 1.0) return child!;
+        // 1 → 0 with a little overshoot past flat on the way
+        final remaining = 1.0 - Curves.easeOutBack.transform(t);
+        final transform = Matrix4.identity()
+          ..setEntry(3, 2, 0.0012) // perspective
+          ..rotateY(from.dx * _maxAngle * remaining)
+          ..rotateX(-from.dy * _maxAngle * remaining);
+        return Transform(transform: transform, alignment: Alignment.center, child: child);
+      },
+    );
+  }
+}
+
+/// The glassy finish on a focused tile: a constant soft light from the top edge plus a diagonal
+/// highlight that sweeps across once when focus arrives ([progress] 0 → 1).
+class _TvosGlarePainter extends CustomPainter {
+  final double progress;
+  final double breath;
+
+  const _TvosGlarePainter({required this.progress, this.breath = 0});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final rect = Offset.zero & size;
+
+    final topLight = Paint()
+      ..shader = LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.center,
+        colors: [Colors.white.withValues(alpha: 0.12 + 0.08 * breath), Colors.white.withValues(alpha: 0.0)],
+      ).createShader(rect);
+    canvas.drawRect(rect, topLight);
+
+    if (progress < 1.0) {
+      // Band travels from beyond the top-left corner to beyond the bottom-right one
+      final eased = Curves.easeInOutCubic.transform(progress);
+      final center = -0.6 + eased * 2.2;
+      final fade = progress < 0.85 ? 1.0 : (1.0 - progress) / 0.15;
+      final sweep = Paint()
+        ..shader = LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          stops: [
+            (center - 0.18).clamp(0.0, 1.0),
+            center.clamp(0.0, 1.0),
+            (center + 0.18).clamp(0.0, 1.0),
+          ],
+          colors: [
+            Colors.white.withValues(alpha: 0.0),
+            Colors.white.withValues(alpha: 0.28 * fade),
+            Colors.white.withValues(alpha: 0.0),
+          ],
+        ).createShader(rect);
+      canvas.drawRect(rect, sweep);
+    }
+  }
+
+  @override
+  bool shouldRepaint(_TvosGlarePainter oldDelegate) =>
+      oldDelegate.progress != progress || oldDelegate.breath != breath;
 }
 
 class _HighlightOutline extends StatelessWidget {
@@ -650,7 +869,7 @@ class _HighlightOutline extends StatelessWidget {
   Widget build(BuildContext context) {
     return CustomPaint(
       foregroundPainter: AppCardContourPainter(
-        radius: 12.0,
+        radius: kAppCardRadius,
         strokeWidth: isMoving ? max(2.0, strokeWidth + 0.5) : strokeWidth,
         accentColor: accentColor,
         alpha: alpha,

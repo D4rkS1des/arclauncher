@@ -45,6 +45,7 @@ import 'package:flauncher/l10n/app_localizations.dart';
 
 import 'models/app.dart';
 import 'models/category.dart';
+import 'package:flauncher/widgets/category_display_name.dart';
 
 const _kDockOuterPadding = EdgeInsets.only(
   left: kLauncherSectionHorizontalPadding,
@@ -210,10 +211,18 @@ class _FLauncherState extends State<FLauncher> with WidgetsBindingObserver {
                         opacity: appGridFocused && !blurDisabled ? 1 : 0,
                         duration: const Duration(milliseconds: 250),
                         curve: Curves.easeInOut,
-                        child: CachedBlurLayer(
-                          sigma: 10,
-                          prebakedBlur: gridBlur,
-                          hidden: !appGridFocused || blurDisabled,
+                        child: Stack(
+                          fit: StackFit.expand,
+                          children: [
+                            CachedBlurLayer(
+                              sigma: 10,
+                              prebakedBlur: gridBlur,
+                              hidden: !appGridFocused || blurDisabled,
+                            ),
+                            // Scrolling into the grid also dims the wallpaper, like tvOS does,
+                            // so the tiles stand out against it
+                            const ColoredBox(color: Color(0x59000000)),
+                          ],
                         ),
                       ),
                     ),
@@ -379,7 +388,7 @@ class _FLauncherState extends State<FLauncher> with WidgetsBindingObserver {
                 return Padding(
                   padding: const EdgeInsets.only(left: 40, bottom: 8, top: 8),
                   child: Text(
-                    category.name,
+                    categoryDisplayName(context, category.name),
                     style: Theme.of(context).textTheme.titleLarge!.copyWith(
                       shadows: const [Shadow(color: Colors.black54, offset: Offset(1, 1), blurRadius: 8)],
                     ),
@@ -551,6 +560,19 @@ class _FLauncherState extends State<FLauncher> with WidgetsBindingObserver {
     final darkBackground = context.select<SettingsService, bool>((s) => s.dockDarkBackground);
     final shadowEnabled = context.select<SettingsService, bool>((s) => s.dockShadowEnabled);
     final isBigPicture = context.select<SettingsService, bool>((s) => s.showWatchNextSection && s.watchNextBigPictureMode);
+    final tvosStyle = context.select<SettingsService, bool>((s) => s.tvosStyleEnabled);
+
+    // tvOS look: the top row floats straight over the wallpaper, with no tray, outline or blur
+    // behind it. The tiles carry their own shadows.
+    if (tvosStyle) {
+      return CategoryCleanRow(
+        category: category,
+        applications: apps,
+        isFirstSection: handleUpNavigationToSettings,
+        scrollAlignment: 1.0,
+        onAppFocused: _onHomeSectionFocused,
+      );
+    }
 
     const dockBorderRadius = 24.0;
     final borderRadius = BorderRadius.circular(dockBorderRadius);

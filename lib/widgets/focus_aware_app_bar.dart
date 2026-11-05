@@ -152,10 +152,13 @@ class FocusAwareAppBarState extends State<FocusAwareAppBar>
                 timeFormat: service.timeFormat),
                 builder: (context, dateTimeSettings, _) {
                   // Define standard text style
+                  // tvOS-style status text: medium-weight date, semibold clock, tight tracking
                   const textStyle = TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w400,
-                    color: Colors.white,
+                    fontSize: 21,
+                    fontWeight: FontWeight.w500,
+                    fontVariations: [FontVariation('wght', 500)],
+                    letterSpacing: -0.3,
+                    color: Color(0xE6FFFFFF),
                     shadows: [
                       Shadow(color: Colors.black54, offset: Offset(0, 2), blurRadius: 4)
                     ],
@@ -182,7 +185,11 @@ class FocusAwareAppBarState extends State<FocusAwareAppBar>
                           dateTimeSettings.timeFormat,
                           key: const Key("statusbar_clock"),
                           updateInterval: const Duration(minutes: 1),
-                          textStyle: textStyle.copyWith(fontWeight: FontWeight.bold),
+                          textStyle: textStyle.copyWith(
+                            fontWeight: FontWeight.w600,
+                            fontVariations: const [FontVariation('wght', 600)],
+                            color: Colors.white,
+                          ),
                         ),
                     ]
                   );

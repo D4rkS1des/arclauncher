@@ -50,6 +50,42 @@ class FLauncherApp extends StatelessWidget
 
   const FLauncherApp();
 
+  static const String _fontFamily = 'Inter';
+
+  /// Sets both the nominal weight and the variable font's 'wght' axis, so Inter renders the real
+  /// weight instead of a synthesised bold on engines that do not map one to the other.
+  static TextStyle? _w(TextStyle? style, FontWeight weight, {double? letterSpacing, Color? color, double? size}) =>
+      style?.copyWith(
+        fontFamily: _fontFamily,
+        fontWeight: weight,
+        fontVariations: [FontVariation.weight(weight.value.toDouble())],
+        letterSpacing: letterSpacing,
+        color: color,
+        fontSize: size,
+      );
+
+  /// tvOS-like typography: heavy, tightly tracked titles; plain body text; quiet grey captions.
+  static TextTheme _tvosTextTheme() {
+    final base = Typography.material2018().white;
+    return base.copyWith(
+      displayLarge: _w(base.displayLarge, FontWeight.w700, letterSpacing: -1.0),
+      displayMedium: _w(base.displayMedium, FontWeight.w700, letterSpacing: -0.8),
+      displaySmall: _w(base.displaySmall, FontWeight.w700, letterSpacing: -0.6),
+      headlineLarge: _w(base.headlineLarge, FontWeight.w700, letterSpacing: -0.6),
+      headlineMedium: _w(base.headlineMedium, FontWeight.w700, letterSpacing: -0.5),
+      headlineSmall: _w(base.headlineSmall, FontWeight.w700, letterSpacing: -0.4),
+      titleLarge: _w(base.titleLarge, FontWeight.w700, letterSpacing: -0.4, size: 22),
+      titleMedium: _w(base.titleMedium, FontWeight.w600, letterSpacing: -0.2),
+      titleSmall: _w(base.titleSmall, FontWeight.w600, letterSpacing: -0.1),
+      bodyLarge: _w(base.bodyLarge, FontWeight.w400, letterSpacing: -0.1),
+      bodyMedium: _w(base.bodyMedium, FontWeight.w400, letterSpacing: -0.1, size: 15),
+      bodySmall: _w(base.bodySmall, FontWeight.w400, color: Colors.white.withValues(alpha: 0.6), size: 13),
+      labelLarge: _w(base.labelLarge, FontWeight.w600, letterSpacing: 0),
+      labelMedium: _w(base.labelMedium, FontWeight.w500, letterSpacing: 0),
+      labelSmall: _w(base.labelSmall, FontWeight.w500, letterSpacing: 0.1),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     AppsService appsService = context.read<AppsService>();
@@ -86,6 +122,8 @@ class FLauncherApp extends StatelessWidget
         theme: ThemeData(
           useMaterial3: true,
           brightness: Brightness.dark,
+          fontFamily: _fontFamily,
+          textTheme: _tvosTextTheme(),
           // Use ColorScheme based on accent color
           colorScheme: ColorScheme.fromSeed(
             seedColor: accentColor,
@@ -107,14 +145,14 @@ class FLauncherApp extends StatelessWidget
           dialogTheme: DialogThemeData(
             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
             backgroundColor: const Color(0xFF1E1E1E),
-            titleTextStyle: Typography.material2018().white.titleLarge,
-            contentTextStyle: Typography.material2018().white.bodyMedium,
+            titleTextStyle: _tvosTextTheme().titleLarge,
+            contentTextStyle: _tvosTextTheme().bodyMedium,
           ),
           appBarTheme: const AppBarTheme(elevation: 0, backgroundColor: Colors.transparent),
           typography: Typography.material2018(),
           inputDecorationTheme: InputDecorationTheme(
             focusedBorder: const UnderlineInputBorder(borderSide: BorderSide(color: Colors.white)),
-            labelStyle: Typography.material2018().white.bodyMedium,
+            labelStyle: _tvosTextTheme().bodyMedium,
           ),
           textSelectionTheme: TextSelectionThemeData(
             cursorColor: accentColor,

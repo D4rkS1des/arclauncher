@@ -25,6 +25,7 @@ import 'package:provider/provider.dart';
 import '../models/app.dart';
 import '../models/category.dart';
 import '../providers/settings_service.dart';
+import 'package:flauncher/widgets/category_display_name.dart';
 
 class CategoryRow extends StatelessWidget
 {
@@ -89,7 +90,7 @@ class CategoryRow extends StatelessWidget
             if (showCategoriesTitle) {
               return Padding(
                 padding: const EdgeInsets.only(left: 16, bottom: 8),
-                child: Text(category.name,
+                child: Text(categoryDisplayName(context, category.name),
                   style: Theme.of(context)
                       .textTheme
                       .titleLarge!

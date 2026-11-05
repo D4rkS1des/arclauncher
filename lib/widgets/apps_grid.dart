@@ -27,6 +27,7 @@ import '../models/app.dart';
 import '../models/category.dart';
 import '../providers/settings_service.dart';
 import 'category_container_common.dart';
+import 'package:flauncher/widgets/category_display_name.dart';
 
 class AppsGrid extends StatelessWidget
 {
@@ -101,7 +102,7 @@ class AppsGrid extends StatelessWidget
             if (showCategoriesTitle) {
               return Padding(
                 padding: const EdgeInsets.only(left: 16, bottom: 8),
-                child: Text(category.name,
+                child: Text(categoryDisplayName(context, category.name),
                   style: Theme.of(context)
                       .textTheme
                       .titleLarge!
