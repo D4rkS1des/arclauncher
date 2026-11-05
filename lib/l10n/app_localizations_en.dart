@@ -27,6 +27,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get showFocusBorders => 'Show focus borders';
 
   @override
+  String get tvosStyle => 'Apple TV style';
+
+  @override
   String get focusBorderThickness => 'Focus border thickness';
 
   @override

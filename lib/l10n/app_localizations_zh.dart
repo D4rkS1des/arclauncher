@@ -27,6 +27,9 @@ class AppLocalizationsZh extends AppLocalizations {
   String get showFocusBorders => '显示焦点边框';
 
   @override
+  String get tvosStyle => 'Apple TV style';
+
+  @override
   String get focusBorderThickness => '焦点边框粗细';
 
   @override

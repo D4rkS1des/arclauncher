@@ -27,6 +27,9 @@ class AppLocalizationsTr extends AppLocalizations {
   String get showFocusBorders => 'Odak kenarlıklarını göster';
 
   @override
+  String get tvosStyle => 'Apple TV style';
+
+  @override
   String get focusBorderThickness => 'Odak kenarlık kalınlığı';
 
   @override

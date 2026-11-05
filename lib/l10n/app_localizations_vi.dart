@@ -27,6 +27,9 @@ class AppLocalizationsVi extends AppLocalizations {
   String get showFocusBorders => 'Hiện viền ô đang chọn';
 
   @override
+  String get tvosStyle => 'Apple TV style';
+
+  @override
   String get focusBorderThickness => 'Độ dày viền ô đang chọn';
 
   @override

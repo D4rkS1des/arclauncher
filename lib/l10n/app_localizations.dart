@@ -7,6 +7,7 @@ import 'package:intl/intl.dart' as intl;
 
 import 'app_localizations_en.dart';
 import 'app_localizations_es.dart';
+import 'app_localizations_ru.dart';
 import 'app_localizations_tr.dart';
 import 'app_localizations_vi.dart';
 import 'app_localizations_zh.dart';
@@ -99,6 +100,7 @@ abstract class AppLocalizations {
   static const List<Locale> supportedLocales = <Locale>[
     Locale('en'),
     Locale('es'),
+    Locale('ru'),
     Locale('tr'),
     Locale('vi'),
     Locale('zh'),
@@ -139,6 +141,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Show focus borders'**
   String get showFocusBorders;
+
+  /// No description provided for @tvosStyle.
+  ///
+  /// In en, this message translates to:
+  /// **'Apple TV style'**
+  String get tvosStyle;
 
   /// No description provided for @focusBorderThickness.
   ///
@@ -1525,8 +1533,14 @@ class _AppLocalizationsDelegate
   }
 
   @override
-  bool isSupported(Locale locale) =>
-      <String>['en', 'es', 'tr', 'vi', 'zh'].contains(locale.languageCode);
+  bool isSupported(Locale locale) => <String>[
+    'en',
+    'es',
+    'ru',
+    'tr',
+    'vi',
+    'zh',
+  ].contains(locale.languageCode);
 
   @override
   bool shouldReload(_AppLocalizationsDelegate old) => false;
@@ -1539,6 +1553,8 @@ AppLocalizations lookupAppLocalizations(Locale locale) {
       return AppLocalizationsEn();
     case 'es':
       return AppLocalizationsEs();
+    case 'ru':
+      return AppLocalizationsRu();
     case 'tr':
       return AppLocalizationsTr();
     case 'vi':
