@@ -1,5 +1,24 @@
 # Arc Launcher
 
+> ### 🍴 About this fork
+> Personal fork of Arc Launcher with a **tvOS-inspired look**, **Russian localization** and a few TV conveniences. Not affiliated with Apple; "Apple TV" and "tvOS" are trademarks of Apple Inc. No Apple fonts or assets are used.
+>
+> **Changes**
+> - **tvOS-style tiles.** Focus lifts the tile with a soft wide shadow, a swing-in tilt from the D-pad direction, a glass sheen and a slow "breathing" glow; the app name appears only under the focused tile; a short push-in on launch. The favorites dock floats over the wallpaper without a tray; the grid blurs and dims the wallpaper.
+> - **Top shelf by default.** Watch Next immersive mode (full-screen backdrop) is on by default.
+> - **Typography.** [Inter](https://github.com/rsms/inter) (SIL OFL 1.1, see `assets/fonts/Inter-OFL.txt`) with heavier, tightly tracked titles.
+> - **Glass panels.** Settings and app actions open as a floating frosted-glass sheet; the focused row is a white pill with dark content.
+> - **"Apple TV style" switch** in Settings → Interface → Appearance to go back to the stock look.
+> - **Russian translation** of the whole UI, including built-in category names.
+> - **Input source button** in the status bar (opens the TV's own HDMI/AV/tuner picker).
+> - **Wallpaper screensaver.** The built-in screensaver can show the launcher wallpapers (Reddit/Unsplash/static) with a slow Ken Burns drift behind the clock.
+>
+> **Build** (Flutter 3.41.9, JDK 17) — the `play` flavor has no self-updater:
+> ```bash
+> flutter build apk --release --flavor play --target-platform android-arm
+> ```
+> Release signing reads `storeFile`/`storePassword`/`keyAlias`/`keyPassword` from `android/local.properties` (not committed). The package id is still `com.omeda.arc`, so uninstall the official build before installing yours.
+
 <picture>
   <img alt="Arc Launcher Preview" src="docs/images/home.webp">
 </picture>
