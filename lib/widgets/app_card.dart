@@ -123,15 +123,11 @@ class _AppCardState extends State<AppCard> with TickerProviderStateMixin {
   /// One-shot specular sweep across the card when it gains focus.
   late final AnimationController _sheen;
 
-  /// Slow, endless 'breathing' of the focused tile's light and shadow, so it feels alive.
-  late final AnimationController _breath;
-
   @override
   void initState() {
     super.initState();
     _tilt = AnimationController(vsync: this, duration: const Duration(milliseconds: 520), value: 1);
     _sheen = AnimationController(vsync: this, duration: const Duration(milliseconds: 900), value: 1);
-    _breath = AnimationController(vsync: this, duration: const Duration(milliseconds: 2600));
     _animation = AnimationController(vsync: this, duration: const Duration(milliseconds: 1200));
     _curvedAnimation = CurvedAnimation(parent: _animation, curve: Curves.easeInOut);
     _focusNode = FocusNode();
@@ -193,7 +189,6 @@ class _AppCardState extends State<AppCard> with TickerProviderStateMixin {
     _animation.dispose();
     _tilt.dispose();
     _sheen.dispose();
-    _breath.dispose();
     _focusNode.dispose();
 
     super.dispose();
@@ -244,50 +239,39 @@ class _AppCardState extends State<AppCard> with TickerProviderStateMixin {
                       duration: _focusAnimationDuration,
                       alignment: Alignment.center,
                       curve: Curves.easeOutCubic,
+                      // Card contents in their own layer: the tilt and scale transforms above then
+                      // just move a cached picture instead of repainting it on every frame.
+                      child: RepaintBoundary(
                       child: Stack(
                         fit: StackFit.expand,
                         children: [
-                          // Lift: a soft, wide shadow that drops further when focused
-                          AnimatedContainer(
-                            duration: _focusAnimationDuration,
-                            curve: Curves.easeOutCubic,
+                          // Resting shadow: static, painted once with the card.
+                          const DecoratedBox(
                             decoration: BoxDecoration(
-                              borderRadius: BorderRadius.circular(kAppCardRadius),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.black.withValues(alpha: shouldHighlight ? 0.55 : 0.30),
-                                  blurRadius: shouldHighlight ? 30 : 10,
-                                  offset: Offset(0, shouldHighlight ? 18 : 4),
-                                ),
-                              ],
+                              borderRadius: BorderRadius.all(Radius.circular(kAppCardRadius)),
+                              boxShadow: [BoxShadow(color: Color(0x4D000000), blurRadius: 10, offset: Offset(0, 4))],
                             ),
                           ),
-                          // A second, wider shadow that slowly breathes while the tile is focused
-                          if (tvos)
-                            IgnorePointer(
-                              child: AnimatedOpacity(
-                                duration: _focusAnimationDuration,
-                                opacity: shouldHighlight && !_moving ? 1.0 : 0.0,
-                                child: AnimatedBuilder(
-                                  animation: _breath,
-                                  builder: (context, _) {
-                                    final b = Curves.easeInOut.transform(_breath.value);
-                                    return DecoratedBox(
-                                      decoration: BoxDecoration(
-                                        borderRadius: BorderRadius.circular(kAppCardRadius),
-                                        boxShadow: [
-                                          BoxShadow(
-                                            color: Colors.black.withValues(alpha: 0.16 + 0.10 * b),
-                                            blurRadius: 34 + 14 * b,
-                                            offset: Offset(0, 22 + 6 * b),
-                                          ),
-                                        ],
-                                      ),
-                                    );
-                                  },
+                          // Lift shadow: rasterised once in its own layer and only faded in/out.
+                          // Animating blurRadius instead re-blurs a large area every frame, which
+                          // TV GPUs cannot keep up with during fast D-pad navigation.
+                          IgnorePointer(
+                            child: AnimatedOpacity(
+                              duration: _focusAnimationDuration,
+                              curve: Curves.easeOutCubic,
+                              opacity: shouldHighlight && !_moving ? 1.0 : 0.0,
+                              child: const RepaintBoundary(
+                                child: DecoratedBox(
+                                  decoration: BoxDecoration(
+                                    borderRadius: BorderRadius.all(Radius.circular(kAppCardRadius)),
+                                    boxShadow: [
+                                      BoxShadow(color: Color(0x8C000000), blurRadius: 30, offset: Offset(0, 18)),
+                                    ],
+                                  ),
                                 ),
                               ),
                             ),
+                          ),
                           Material(
                             borderRadius: BorderRadius.circular(kAppCardRadius),
                             clipBehavior: Clip.antiAlias,
@@ -322,12 +306,9 @@ class _AppCardState extends State<AppCard> with TickerProviderStateMixin {
                                   IgnorePointer(
                                     child: RepaintBoundary(
                                       child: AnimatedBuilder(
-                                        animation: Listenable.merge([_sheen, _breath]),
+                                        animation: _sheen,
                                         builder: (context, _) => CustomPaint(
-                                          painter: _TvosGlarePainter(
-                                            progress: _sheen.value,
-                                            breath: Curves.easeInOut.transform(_breath.value),
-                                          ),
+                                          painter: _TvosGlarePainter(progress: _sheen.value),
                                           child: const SizedBox.expand(),
                                         ),
                                       ),
@@ -364,6 +345,7 @@ class _AppCardState extends State<AppCard> with TickerProviderStateMixin {
                                 ),
                               ),
                         ],
+                      ),
                       ),
                     ),
                     ),
@@ -515,12 +497,6 @@ class _AppCardState extends State<AppCard> with TickerProviderStateMixin {
       if (focused) {
         _tilt.forward(from: 0);
         _sheen.forward(from: 0);
-        if (context.read<SettingsService>().tvosStyleEnabled) {
-          _breath.repeat(reverse: true);
-        }
-      } else {
-        _breath.stop();
-        _breath.value = 0;
       }
     }
     _updateHighlightAnimation();
@@ -807,9 +783,8 @@ class _TvosTilt extends StatelessWidget {
 /// highlight that sweeps across once when focus arrives ([progress] 0 → 1).
 class _TvosGlarePainter extends CustomPainter {
   final double progress;
-  final double breath;
 
-  const _TvosGlarePainter({required this.progress, this.breath = 0});
+  const _TvosGlarePainter({required this.progress});
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -819,7 +794,7 @@ class _TvosGlarePainter extends CustomPainter {
       ..shader = LinearGradient(
         begin: Alignment.topCenter,
         end: Alignment.center,
-        colors: [Colors.white.withValues(alpha: 0.12 + 0.08 * breath), Colors.white.withValues(alpha: 0.0)],
+        colors: [Colors.white.withValues(alpha: 0.16), Colors.white.withValues(alpha: 0.0)],
       ).createShader(rect);
     canvas.drawRect(rect, topLight);
 
@@ -848,8 +823,7 @@ class _TvosGlarePainter extends CustomPainter {
   }
 
   @override
-  bool shouldRepaint(_TvosGlarePainter oldDelegate) =>
-      oldDelegate.progress != progress || oldDelegate.breath != breath;
+  bool shouldRepaint(_TvosGlarePainter oldDelegate) => oldDelegate.progress != progress;
 }
 
 class _HighlightOutline extends StatelessWidget {
