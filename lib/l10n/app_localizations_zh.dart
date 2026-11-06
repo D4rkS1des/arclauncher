@@ -414,6 +414,18 @@ class AppLocalizationsZh extends AppLocalizations {
   String get screensaverShowWallpaper => 'Wallpapers on screensaver';
 
   @override
+  String get inputsTitle => 'Inputs';
+
+  @override
+  String get inputsTv => 'TV';
+
+  @override
+  String get inputsDisconnected => 'No signal';
+
+  @override
+  String get inputsNone => 'No TV inputs found';
+
+  @override
   String get wifiUsagePeriod => 'WiFi 使用周期';
 
   @override

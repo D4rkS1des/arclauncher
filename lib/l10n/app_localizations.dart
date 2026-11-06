@@ -874,6 +874,30 @@ abstract class AppLocalizations {
   /// **'Wallpapers on screensaver'**
   String get screensaverShowWallpaper;
 
+  /// No description provided for @inputsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Inputs'**
+  String get inputsTitle;
+
+  /// No description provided for @inputsTv.
+  ///
+  /// In en, this message translates to:
+  /// **'TV'**
+  String get inputsTv;
+
+  /// No description provided for @inputsDisconnected.
+  ///
+  /// In en, this message translates to:
+  /// **'No signal'**
+  String get inputsDisconnected;
+
+  /// No description provided for @inputsNone.
+  ///
+  /// In en, this message translates to:
+  /// **'No TV inputs found'**
+  String get inputsNone;
+
   /// No description provided for @wifiUsagePeriod.
   ///
   /// In en, this message translates to:

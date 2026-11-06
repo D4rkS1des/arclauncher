@@ -53,6 +53,10 @@
         <intent>
             <action android:name="android.intent.action.OPEN_DOCUMENT" />
         </intent>
+        <!-- The TV's own input picker, used for the status bar source button when present -->
+        <intent>
+            <action android:name="com.android.tv.action.VIEW_INPUTS" />
+        </intent>
     </queries>
 
     <application

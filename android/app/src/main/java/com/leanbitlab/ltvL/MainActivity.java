@@ -101,6 +101,9 @@ public class MainActivity extends FlutterActivity {
                     result.success(null);
                 }
                 case "openScreensaverSettings" -> result.success(openScreensaverSettings());
+                case "openSystemInputPicker" -> result.success(openSystemInputPicker());
+                case "getTvInputs" -> result.success(getTvInputs());
+                case "openTvInput" -> result.success(openTvInput(call.arguments()));
                 case "openAppInfo" -> result.success(openAppInfo(call.arguments()));
                 case "uninstallApp" -> result.success(uninstallApp(call.arguments()));
                 case "isDefaultLauncher" -> result.success(isDefaultLauncher());
@@ -461,6 +464,88 @@ public class MainActivity extends FlutterActivity {
         Intent intent = new Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
                 .setData(Uri.fromParts("package", packageName, null));
 
+        return tryStartActivity(intent);
+    }
+
+    /**
+     * Opens the TV's own input picker if the firmware has one (stock live-TV app or the Android TV
+     * launcher answer com.android.tv.action.VIEW_INPUTS). Returns false when nothing handles it,
+     * e.g. once the stock launcher that provided it has been disabled; the caller then shows its
+     * own list from {@link #getTvInputs()}.
+     */
+    private boolean openSystemInputPicker() {
+        Intent intent = new Intent("com.android.tv.action.VIEW_INPUTS");
+        if (getPackageManager().resolveActivity(intent, 0) == null) {
+            return false;
+        }
+        return tryStartActivity(intent);
+    }
+
+    /**
+     * Physical TV inputs (HDMI, composite, tuners) from TvInputManager, HDMI first. App-provided
+     * inputs (preview channels of streaming apps) and inputs the user hid are left out.
+     */
+    private List<Map<String, Object>> getTvInputs() {
+        List<Map<String, Object>> result = new ArrayList<>();
+        android.media.tv.TvInputManager tim =
+                (android.media.tv.TvInputManager) getSystemService(Context.TV_INPUT_SERVICE);
+        if (tim == null) return result;
+        for (android.media.tv.TvInputInfo info : tim.getTvInputList()) {
+            ApplicationInfo appInfo = info.getServiceInfo().applicationInfo;
+            boolean systemInput = (appInfo.flags & ApplicationInfo.FLAG_SYSTEM) != 0;
+            if (!systemInput || info.isHidden(this)) continue;
+            int type = info.getType();
+            if (!info.isPassthroughInput() && type != android.media.tv.TvInputInfo.TYPE_TUNER) continue;
+            CharSequence label = info.loadCustomLabel(this);
+            if (label == null || label.length() == 0) label = info.loadLabel(this);
+            Map<String, Object> map = new HashMap<>();
+            map.put("id", info.getId());
+            map.put("label", label == null ? info.getId() : label.toString());
+            map.put("type", type);
+            map.put("passthrough", info.isPassthroughInput());
+            map.put("state", tim.getInputState(info.getId()));
+            result.add(map);
+        }
+        // HDMI 1, 2, 3 ... then AV, then the tuner; firmware lists them in arbitrary order
+        result.sort((a, b) -> {
+            int byType = Integer.compare(inputOrder((Integer) a.get("type")), inputOrder((Integer) b.get("type")));
+            return byType != 0 ? byType : ((String) a.get("label")).compareToIgnoreCase((String) b.get("label"));
+        });
+        // Several tuner inputs (digital/analog, cable/satellite) all open the same live-TV app: keep one
+        boolean tunerSeen = false;
+        for (java.util.Iterator<Map<String, Object>> it = result.iterator(); it.hasNext(); ) {
+            Map<String, Object> m = it.next();
+            if ((Integer) m.get("type") != android.media.tv.TvInputInfo.TYPE_TUNER) continue;
+            if (tunerSeen) it.remove();
+            tunerSeen = true;
+        }
+        return result;
+    }
+
+    private static int inputOrder(int type) {
+        if (type == android.media.tv.TvInputInfo.TYPE_HDMI) return 0;
+        if (type == android.media.tv.TvInputInfo.TYPE_TUNER) return 2;
+        return 1;
+    }
+
+    /**
+     * Switches the TV to an input: passthrough inputs (HDMI/AV) via their passthrough channel URI,
+     * which the live-TV app handles; tuners by opening the live-TV app on its last channel.
+     */
+    private boolean openTvInput(String inputId) {
+        if (inputId == null) return false;
+        android.media.tv.TvInputManager tim =
+                (android.media.tv.TvInputManager) getSystemService(Context.TV_INPUT_SERVICE);
+        android.media.tv.TvInputInfo info = tim == null ? null : tim.getTvInputInfo(inputId);
+        if (info != null && !info.isPassthroughInput()) {
+            Intent live = new Intent(Intent.ACTION_VIEW, TvContract.buildChannelsUriForInput(inputId));
+            live.setType(TvContract.Channels.CONTENT_TYPE);
+            Intent launch = getPackageManager().getLeanbackLaunchIntentForPackage("com.mediatek.wwtv.tvcenter");
+            if (launch != null && tryStartActivity(launch)) return true;
+            return tryStartActivity(live);
+        }
+        Intent intent = new Intent(Intent.ACTION_VIEW, TvContract.buildChannelUriForPassthroughInput(inputId));
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         return tryStartActivity(intent);
     }
 

@@ -471,10 +471,6 @@ class AppsService extends ChangeNotifier
 
   Future<void> openSettings() => _fLauncherChannel.openSettings();
 
-  /// Opens the TV's own input picker (HDMI, AV, tuner). Google TV's launcher used to provide
-  /// this; with a custom launcher the stock live-TV app's panel answers the same standard action.
-  Future<void> openInputs() => _fLauncherChannel.launchActivityFromAction('com.android.tv.action.VIEW_INPUTS');
-
   Future<bool> isDefaultLauncher() => _fLauncherChannel.isDefaultLauncher();
 
   Future<void> startAmbientMode() => _fLauncherChannel.startAmbientMode();

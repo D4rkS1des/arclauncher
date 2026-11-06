@@ -2,11 +2,11 @@ import 'package:flauncher/widgets/settings/settings_panel.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../providers/apps_service.dart';
 import '../providers/launcher_state.dart';
 import '../providers/network_service.dart';
 import '../providers/settings_service.dart';
 import 'app_bar_focus_ring.dart';
+import 'tv_inputs_panel.dart';
 import 'daily_wifi_usage_widget.dart';
 import 'date_time_widget.dart';
 import 'network_widget.dart';
@@ -115,7 +115,7 @@ class FocusAwareAppBarState extends State<FocusAwareAppBar>
               const SizedBox(width: 8),
               // Input source picker (HDMI 1-3, AV, antenna): same panel as the remote's Input key
               AppBarFocusRing(
-                onPressed: () => context.read<AppsService>().openInputs(),
+                onPressed: () => showTvInputPicker(context),
                 semanticLabel: 'Input source',
                 child: const Icon(
                   Icons.input_rounded,

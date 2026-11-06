@@ -51,6 +51,15 @@ class FLauncherChannel {
 
   Future<void> openSettings() async => await _methodChannel.invokeMethod('openSettings');
 
+  /// Opens the firmware's input picker; false if this TV has none (see MainActivity).
+  Future<bool> openSystemInputPicker() async => await _methodChannel.invokeMethod<bool>('openSystemInputPicker') ?? false;
+
+  /// Physical TV inputs: maps with id, label, type, passthrough, state (0 connected, 1 standby, 2 disconnected).
+  Future<List<Map<dynamic, dynamic>>> getTvInputs() async =>
+      (await _methodChannel.invokeMethod<List<dynamic>>('getTvInputs') ?? const []).cast<Map<dynamic, dynamic>>();
+
+  Future<bool> openTvInput(String inputId) async => await _methodChannel.invokeMethod<bool>('openTvInput', inputId) ?? false;
+
   Future<void> openAppInfo(String packageName) async => await _methodChannel.invokeMethod('openAppInfo', packageName);
 
   Future<void> uninstallApp(String packageName) async => await _methodChannel.invokeMethod('uninstallApp', packageName);

@@ -420,6 +420,18 @@ class AppLocalizationsRu extends AppLocalizations {
   String get screensaverShowWallpaper => 'Обои на заставке';
 
   @override
+  String get inputsTitle => 'Источники';
+
+  @override
+  String get inputsTv => 'Телевидение';
+
+  @override
+  String get inputsDisconnected => 'Нет сигнала';
+
+  @override
+  String get inputsNone => 'Входы ТВ не найдены';
+
+  @override
   String get wifiUsagePeriod => 'Период трафика Wi-Fi';
 
   @override
