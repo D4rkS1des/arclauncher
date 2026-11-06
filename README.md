@@ -10,7 +10,8 @@
 > - **Glass panels.** Settings and app actions open as a floating frosted-glass sheet; the focused row is a white pill with dark content.
 > - **"Apple TV style" switch** in Settings → Interface → Appearance to go back to the stock look.
 > - **Russian translation** of the whole UI, including built-in category names.
-> - **Input source button** in the status bar (opens the TV's own HDMI/AV/tuner picker).
+> - **Input source button** in the status bar: opens the TV's own HDMI/AV/tuner picker, or — on TVs where that picker lived in the stock launcher (e.g. Xiaomi Mi TV with the Android TV launcher disabled) — the launcher's own glass panel that switches inputs directly.
+> - **Lighter focus effects** for TV GPUs: no continuous animation while idle, pre-rendered lift shadows.
 > - **Wallpaper screensaver.** The built-in screensaver can show the launcher wallpapers (Reddit/Unsplash/static) with a slow Ken Burns drift behind the clock.
 >
 > **Build** (Flutter 3.41.9, JDK 17) — the `play` flavor has no self-updater:
